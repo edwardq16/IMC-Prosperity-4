@@ -30,7 +30,6 @@ class ConversionObservation:
         self.sunlight = sunlight
         self.humidity = humidity
 
-
 class Observation:
 
     def __init__(self, plainValueObservations: Dict[Product, ObservationValue],

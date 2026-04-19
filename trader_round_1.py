@@ -80,3 +80,6 @@ class Trader:
         traderData = ""
         conversions = 0
         return result, conversions, traderData
+
+
+    pass
