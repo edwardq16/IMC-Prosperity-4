@@ -6,7 +6,7 @@ and prints a results table sorted by total PnL.
 Usage:
     py sweep.py
 
-Make sure trader_round_1.py is in the same folder as this script,
+Make sure trader_phase_1.py is in the same folder as this script,
 and that your Backtesting data folder is accessible.
 """
 
@@ -23,7 +23,7 @@ SPREAD_VALUES = [1, 2, 3, 4]
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
-TRADER_FILE = "trader_round_1.py"
+TRADER_FILE = "trader_phase_1.py"
 DATA_DIR    = "Backtesting data"
 ROUND       = 1
 

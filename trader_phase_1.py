@@ -2,12 +2,12 @@ from datamodel import TradingState, Order
 from typing import Dict, List
 
 class Trader:
-    SPREAD = 2
-    MAX_SKEW = 1.0
+    spread = 7
+    max_skew = 1.0
 
     def trade_ipr(self, state: TradingState, product: str, product_position: int) -> List[Order]:
         orders = []
-        fair_price = 0.001 * state.timestamp + 13000
+        fair_price = 0.1 * state.timestamp + 13000
 
         ## ARBITRAGE ##
         for price, quantity in sorted(state.order_depths[product].sell_orders.items()):
@@ -23,17 +23,19 @@ class Trader:
                 product_position -= sell_quantity
 
         ## MARKET MAKE ##
-        skew = product_position / 80 * self.MAX_SKEW
-        bid_price = round(fair_price - self.SPREAD - skew)
-        ask_price = round(fair_price + self.SPREAD + skew)
+        skew = product_position / 80 * self.max_skew
+        bid_price = round(fair_price - self.spread)
+        ask_price = round(fair_price + self.spread)
         buy_capacity = 80 - product_position
         sell_capacity = 80 + product_position
 
         if state.order_depths[product].buy_orders and state.order_depths[product].sell_orders:
             if buy_capacity > 0:
                 orders.append(Order(product, bid_price, buy_capacity))
+                product_position += buy_capacity
             if sell_capacity > 0:
                 orders.append(Order(product, ask_price, -sell_capacity))
+                product_position -= sell_capacity
 
         return orders
 
@@ -55,19 +57,24 @@ class Trader:
 
         ## MARKET MAKE ##
         fair_price = 10000
-        skew = product_position / 80 * self.MAX_SKEW
-        bid_price = round(fair_price - self.SPREAD - skew)
-        ask_price = round(fair_price + self.SPREAD + skew)
+        skew = product_position / 80 * self.max_skew
+        bid_price = round(fair_price - self.spread)
+        ask_price = round(fair_price + self.spread)
         buy_capacity = 80 - product_position
         sell_capacity = 80 + product_position
 
         if state.order_depths[product].buy_orders and state.order_depths[product].sell_orders:
             if buy_capacity > 0:
                 orders.append(Order(product, bid_price, buy_capacity))
+                product_position += buy_capacity
             if sell_capacity > 0:
                 orders.append(Order(product, ask_price, -sell_capacity))
+                product_position -= sell_capacity
 
         return orders
+
+    def bid(self):
+        return 12
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
