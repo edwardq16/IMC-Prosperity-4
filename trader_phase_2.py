@@ -2,7 +2,13 @@ import numpy as np
 from datamodel import TradingState, Order
 from typing import Dict, List
 
+def bs_pricer(S, K, T, sigma):
+
+
+
 class Trader:
+    voucher_strikes = {"VEV_4000": 4000, "VEV_4500": 4500, "VEV_5000": 5000, "VEV_5100": 5100, "VEV_5200": 5200, "VEV_5300": 5300, "VEV_5400": 5400, "VEV_5500": 5500, "VEV_6000": 6000, "VEV_6500": 6500}
+
     def trade_hp(self, state: TradingState, product: str, product_position: int) -> List[Order]:
         orders = []
 
@@ -50,32 +56,23 @@ class Trader:
             orders.append(Order(product, round(reservation_price + spread / 2), -ask_size))
 
         return orders
-    def trade_vev_vouchers(self, state: TradingState, product: str, product_position: int) -> List[Order]:
-        orders = []
+
+    def trade_vev_vouchers(self, state: TradingState) -> Dict[str, List[Order]]:
+        voucher_orders = {}
 
         ## CODE HERE ##
 
-        return orders
+        return voucher_orders
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
 
-        for product in state.order_depths:
-            product_position = state.position.get(product, 0)
+        result["HYDROGEL_PACK"] = self.trade_hp(state)
+        result["VELVETFRUIT_EXTRACT"] = self.trade_vev(state)
+        voucher_orders = self.trade_vev_vouchers(state)
 
-            if product == "HYDROGEL_PACK":
-                order_book = self.trade_hp(state, product, product_position)
-
-            elif product == "VELVETFRUIT_EXTRACT":
-                order_book = self.trade_vev(state, product, product_position)
-
-            elif product == "VELVETFRUIT_EXTRACT_VOUCHER":
-                order_book = self.trade_vev_vouchers(state, product, product_position)
-
-            else:
-                order_book = []
-
-            result[product] = order_book
+        for voucher_name, orders in voucher_orders.items():
+            result[voucher_name] = orders
 
         traderData = ""
         conversions = 0
