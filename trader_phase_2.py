@@ -6,13 +6,11 @@ from typing import Dict, List
 def bs_call(S, K, T, sigma):
     if T <= 0 or sigma <= 0:
         return max(S - K, 0)
-
     d1 = (np.log(S / K) + 0.5 * (sigma ** 2) * T)/(sigma * np.sqrt(T))
     d2 = d1 - (sigma * np.sqrt(T))
     N_d1 = norm.cdf(d1)
     N_d2 = norm.cdf(d2)
     C = (S * N_d1) - (K * N_d2)
-
     return C
 
 def bs_delta(S, K, T, sigma):
@@ -21,18 +19,15 @@ def bs_delta(S, K, T, sigma):
             return 1.0
         else:
             return 0.0
-
     d1 = (np.log(S / K) + 0.5 * (sigma ** 2) * T) / (sigma * np.sqrt(T))
     return norm.cdf(d1)
 
 def implied_vol(C_mkt, S, K, T, tolerance=1e-5, max_iterations=100):
     if T <= 0 or C_mkt < max(S - K, 0) or C_mkt > S:
         return None
-
     low = 1e-4
     high = 5.0
     mid = 0.5 * (low + high)
-
     for i in range(max_iterations):
         mid = 0.5 * (low + high)
         price = bs_call(S, K, T, mid)
@@ -42,7 +37,6 @@ def implied_vol(C_mkt, S, K, T, tolerance=1e-5, max_iterations=100):
             low = mid
         if price > C_mkt:
             high = mid
-
     return mid
 
 class Trader:
@@ -98,8 +92,33 @@ class Trader:
 
     def trade_vev_vouchers(self, state: TradingState) -> Dict[str, List[Order]]:
         voucher_orders = {}
+        voucher_data = {}
+        product = "VELVETFRUIT_EXTRACT"
+        order_depth = state.order_depths[product]
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return voucher_orders
 
-        ## CODE HERE ##
+        best_bid = max(order_depth.buy_orders)
+        best_ask = min(order_depth.sell_orders)
+        S = (best_bid + best_ask) / 2
+        T = 5 - state.timestamp/1_000_000
+        if T <= 0:
+            return voucher_orders
+
+        for voucher_name, K in self.voucher_strikes.items():
+            if not state.order_depths[voucher_name].buy_orders or not state.order_depths[voucher_name].sell_orders:
+                continue
+
+            best_bid = max(state.order_depths[voucher_name].buy_orders)
+            best_ask = min(state.order_depths[voucher_name].sell_orders)
+            mid = (best_bid + best_ask) / 2
+            m = (np.log(K/S))/np.sqrt(T)
+            iv = implied_vol(mid, S, K, T)
+            if iv is None:
+                continue
+            voucher_data[voucher_name] = {"iv": iv, "mid": mid, "moneyness": m}
+
+
 
         return voucher_orders
 
