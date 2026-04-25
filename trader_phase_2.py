@@ -52,7 +52,7 @@ class Trader:
 
         return orders
 
-    def trade_vev(self, state: TradingState) -> List[Order]:
+    def trade_ve(self, state: TradingState) -> List[Order]:
         orders = []
         product = "VELVETFRUIT_EXTRACT"
         product_position = state.position.get(product, 0)
@@ -94,7 +94,7 @@ class Trader:
 
         return orders
 
-    def trade_vev_vouchers(self, state: TradingState) -> Dict[str, List[Order]]:
+    def trade_vev(self, state: TradingState) -> Dict[str, List[Order]]:
         voucher_orders = {}
         voucher_data = {}
         max_position = 300
@@ -158,8 +158,8 @@ class Trader:
         result = {}
 
         result["HYDROGEL_PACK"] = self.trade_hp(state)
-        result["VELVETFRUIT_EXTRACT"] = self.trade_vev(state)
-        voucher_orders = self.trade_vev_vouchers(state)
+        result["VELVETFRUIT_EXTRACT"] = self.trade_ve(state)
+        voucher_orders = self.trade_vev(state)
         for voucher_name, orders in voucher_orders.items():
             result[voucher_name] = orders
 
