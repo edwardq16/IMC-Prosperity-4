@@ -47,8 +47,44 @@ class Trader:
 
     def trade_hp(self, state: TradingState) -> List[Order]:
         orders = []
+        product = "HYDROGEL_PACK"
+        product_position = state.position.get(product, 0)
+        order_depth = state.order_depths[product]
+        max_position = 200
+        fair_price = 9991
 
-        ## CODE HERE ##
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
+        mid_price = (best_bid + best_ask) / 2
+
+        ## ARBITRAGE ##
+        for price, quantity in sorted(order_depth.sell_orders.items()):
+            if price < fair_price and product_position < max_position:
+                buy_quantity = min(max_position - product_position, -quantity)
+                orders.append(Order(product, price, buy_quantity))
+                product_position += buy_quantity
+
+        for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
+            if price > fair_price and product_position > -max_position:
+                sell_quantity = min(max_position + product_position, quantity)
+                orders.append(Order(product, price, -sell_quantity))
+                product_position -= sell_quantity
+
+        ## MARKET MAKE ##
+
+        if order_depth.buy_orders and order_depth.sell_orders:
+            gamma = 1
+            std = 0.000217
+            bid_size = max_position - product_position
+            ask_size = max_position + product_position
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
+            spread = 2
+
+            if bid_size > 0:
+                orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
+
+            if ask_size > 0:
+                orders.append(Order(product, round(reservation_price + spread / 2), -ask_size))
 
         return orders
 
@@ -58,6 +94,7 @@ class Trader:
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
         max_position = 200
+        fair_price = 5250
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
@@ -65,13 +102,13 @@ class Trader:
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
-            if price < mid_price and product_position < max_position:
+            if price < fair_price and product_position < max_position:
                 buy_quantity = min(max_position - product_position, -quantity)
                 orders.append(Order(product, price, buy_quantity))
                 product_position += buy_quantity
 
         for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-            if price > mid_price and product_position > -max_position:
+            if price > fair_price and product_position > -max_position:
                 sell_quantity = min(max_position + product_position, quantity)
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
@@ -83,7 +120,7 @@ class Trader:
             std = 0.000215
             bid_size = max_position - product_position
             ask_size = max_position + product_position
-            reservation_price = mid_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
             spread = 2
 
             if bid_size > 0:
@@ -98,7 +135,6 @@ class Trader:
         voucher_orders = {}
         voucher_data = {}
         max_position = 300
-        deviation_threshold = 5e-3
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
         T = 5 - state.timestamp / 1_000_000
@@ -115,6 +151,8 @@ class Trader:
                     best_ask = min(state.order_depths[voucher_name].sell_orders)
                     mid = (best_bid + best_ask) / 2
                     m = (np.log(K/S))/np.sqrt(T)
+                    if abs(m) > 0.075:
+                        continue
                     iv = implied_vol(mid, S, K, T)
                     if iv is not None:
                         voucher_data[voucher_name] = {"iv": iv, "mid": mid, "moneyness": m}
@@ -133,7 +171,7 @@ class Trader:
                     market_iv = data["iv"]
                     fitted_iv = np.polyval(coeffs, m)
                     deviation = market_iv - fitted_iv
-                    if abs(deviation) >= deviation_threshold:
+                    if abs(deviation) >= 5e-3:
 
                         ## TRADE ##
                         if deviation > 0:
