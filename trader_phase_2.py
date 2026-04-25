@@ -51,11 +51,12 @@ class Trader:
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
         max_position = 200
-        fair_price = 9991
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        mid_price = (best_bid + best_ask) / 2
+        bid_vol = order_depth.buy_orders[best_bid]
+        ask_vol = abs(order_depth.sell_orders[best_ask])
+        fair_price = (best_bid * ask_vol + best_ask * bid_vol) / (bid_vol + ask_vol)
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -82,9 +83,11 @@ class Trader:
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
+                product_position += bid_size
 
             if ask_size > 0:
                 orders.append(Order(product, round(reservation_price + spread / 2), -ask_size))
+                product_position -= ask_size
 
         return orders
 
@@ -94,11 +97,12 @@ class Trader:
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
         max_position = 200
-        fair_price = 5250
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        mid_price = (best_bid + best_ask) / 2
+        bid_vol = order_depth.buy_orders[best_bid]
+        ask_vol = abs(order_depth.sell_orders[best_ask])
+        fair_price = (best_bid * ask_vol + best_ask * bid_vol) / (bid_vol + ask_vol)
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -125,9 +129,11 @@ class Trader:
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
+                product_position += bid_size
 
             if ask_size > 0:
                 orders.append(Order(product, round(reservation_price + spread / 2), -ask_size))
+                product_position -= ask_size
 
         return orders
 
