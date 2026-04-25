@@ -56,7 +56,7 @@ class Trader:
         best_ask = min(order_depth.sell_orders.keys())
         bid_vol = order_depth.buy_orders[best_bid]
         ask_vol = abs(order_depth.sell_orders[best_ask])
-        fair_price = (best_bid * ask_vol + best_ask * bid_vol) / (bid_vol + ask_vol)
+        fair_price = (best_bid * bid_vol + best_ask * ask_vol) / (bid_vol + ask_vol)
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -74,12 +74,12 @@ class Trader:
         ## MARKET MAKE ##
 
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 1e-10
+            gamma = 4e-9
             std = 31.521
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
             reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
-            spread = 8
+            spread = 12
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
@@ -102,7 +102,7 @@ class Trader:
         best_ask = min(order_depth.sell_orders.keys())
         bid_vol = order_depth.buy_orders[best_bid]
         ask_vol = abs(order_depth.sell_orders[best_ask])
-        fair_price = (best_bid * ask_vol + best_ask * bid_vol) / (bid_vol + ask_vol)
+        fair_price = (best_bid * bid_vol + best_ask * ask_vol) / (bid_vol + ask_vol)
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -120,12 +120,12 @@ class Trader:
         ## MARKET MAKE ##
 
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 5e-10
+            gamma = 2e-8
             std = 15.092
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
             reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
-            spread = 9
+            spread = 4
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
