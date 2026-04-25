@@ -45,14 +45,14 @@ def implied_vol(C_mkt, S, K, T, tolerance=1e-5, max_iterations=100):
 class Trader:
     voucher_strikes = {"VEV_4000": 4000, "VEV_4500": 4500, "VEV_5000": 5000, "VEV_5100": 5100, "VEV_5200": 5200, "VEV_5300": 5300, "VEV_5400": 5400, "VEV_5500": 5500, "VEV_6000": 6000, "VEV_6500": 6500}
 
-    def trade_hp(self, state: TradingState, product: str, product_position: int) -> List[Order]:
+    def trade_hp(self, state: TradingState) -> List[Order]:
         orders = []
 
         ## CODE HERE ##
 
         return orders
 
-    def trade_vev(self, state: TradingState, product_position: int) -> List[Order]:
+    def trade_vev(self, state: TradingState) -> List[Order]:
         orders = []
         product = "VELVETFRUIT_EXTRACT"
         product_position = state.position.get(product, 0)
