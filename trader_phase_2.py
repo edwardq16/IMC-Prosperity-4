@@ -93,11 +93,14 @@ class Trader:
     def trade_vev_vouchers(self, state: TradingState) -> Dict[str, List[Order]]:
         voucher_orders = {}
         voucher_data = {}
-        product = "VELVETFRUIT_EXTRACT"
-        order_depth = state.order_depths[product]
+        max_position = 300
+        deviation_threshold = 5e-3
+        underlying = "VELVETFRUIT_EXTRACT"
+        order_depth = state.order_depths[underlying]
         if not order_depth.buy_orders or not order_depth.sell_orders:
             return voucher_orders
 
+        ## FIND SPOT PRICE ##
         best_bid = max(order_depth.buy_orders)
         best_ask = min(order_depth.sell_orders)
         S = (best_bid + best_ask) / 2
@@ -105,6 +108,7 @@ class Trader:
         if T <= 0:
             return voucher_orders
 
+        ## IMPLIED VOLATILITY FOR ALL VOUCHERS ##
         for voucher_name, K in self.voucher_strikes.items():
             if not state.order_depths[voucher_name].buy_orders or not state.order_depths[voucher_name].sell_orders:
                 continue
@@ -118,7 +122,39 @@ class Trader:
                 continue
             voucher_data[voucher_name] = {"iv": iv, "mid": mid, "moneyness": m}
 
+        moneynesses = [data["moneyness"] for data in voucher_data.values()]
+        ivs = [data["iv"] for data in voucher_data.values()]
+        if len(ivs) < 5:
+            return voucher_orders
 
+        ## FIT SMILE AND FIND DEVIATION ##
+        coeffs = np.polyfit(moneynesses, ivs, deg=2)
+        for voucher_name, data in voucher_data.items():
+            voucher_orders[voucher_name] = []
+            product_position = state.position.get(voucher_name, 0)
+            m = data["moneyness"]
+            market_iv = data["iv"]
+            fitted_iv = np.polyval(coeffs, m)
+            deviation = market_iv - fitted_iv
+            if abs(deviation) < deviation_threshold:
+                continue
+
+            ## TRADE ##
+            if deviation > 0:
+                for price, quantity in sorted(state.order_depths[voucher_name].buy_orders.items(), reverse=True):
+                    if product_position <= -max_position:
+                        break
+                    sell_quantity = min(max_position + product_position, quantity)
+                    voucher_orders[voucher_name].append(Order(voucher_name, price, -sell_quantity))
+                    product_position -= sell_quantity
+
+            elif deviation < 0:
+                for price, quantity in sorted(state.order_depths[voucher_name].sell_orders.items()):
+                    if product_position >= max_position:
+                        break
+                    buy_quantity = min(max_position - product_position, -quantity)
+                    voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
+                    product_position += buy_quantity
 
         return voucher_orders
 
