@@ -36,8 +36,6 @@ class Trader:
         best_ask = min(state.order_depths[product].sell_orders)
         mid_price = (best_bid + best_ask) / 2
 
-        #do volume adjusted mid
-
         ## ARBITRAGE ##
         for price, quantity in sorted(state.order_depths[product].sell_orders.items()):
             if price < mid_price and product_position < 80:
