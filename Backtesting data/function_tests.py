@@ -44,9 +44,8 @@ def implied_vol(C_mkt, S, K, T, tolerance=1e-5, max_iterations=100):
     return mid
 
 # test cases
-price = bs_call(5000, 5000, 5, 0.2)
-print(f"ATM call price: {price}")
-print(f"Recovered IV: {implied_vol(price, 5000, 5000, 5)}")
-print(f"ATM delta: {bs_delta(5000, 5000, 5, 0.2)}")
-print(bs_delta(5000, 4000, 5, 0.2))
-print(bs_delta(5000, 6500, 5, 0.2))
+print(implied_vol(100, 5250, 5200, 5.0))
+print(implied_vol(270, 5250, 5000, 5.0))   # VEV 5000
+print(implied_vol(180, 5250, 5100, 5.0))   # VEV 5100
+print(implied_vol(50,  5250, 5300, 5.0))   # VEV 5300
+print(implied_vol(16,  5250, 5400, 5.0))   # VEV 5400
