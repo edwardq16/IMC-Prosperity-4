@@ -75,8 +75,8 @@ class Trader:
         if order_depth.buy_orders and order_depth.sell_orders:
             gamma = 1e-10
             std = 31.521
-            bid_size = max_position - product_position
-            ask_size = max_position + product_position
+            bid_size = max(0, max_position - product_position)
+            ask_size = max(0, max_position + product_position)
             reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
             spread = 8
 
@@ -118,8 +118,8 @@ class Trader:
         if order_depth.buy_orders and order_depth.sell_orders:
             gamma = 5e-10
             std = 15.092
-            bid_size = max_position - product_position
-            ask_size = max_position + product_position
+            bid_size = max(0, max_position - product_position)
+            ask_size = max(0, max_position + product_position)
             reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
             spread = 9
 
