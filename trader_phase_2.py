@@ -145,31 +145,31 @@ class Trader:
         order_depth = state.order_depths[underlying]
         T = 5 - state.timestamp / 1_000_000
 
-        if order_depth.buy_orders and order_depth.sell_orders and T >0:
+        AGGRESSIVE_THRESHOLD = 0.0010
+        PASSIVE_THRESHOLD = 0.0001
+
+        if order_depth.buy_orders and order_depth.sell_orders and T > 0:
             best_bid = max(order_depth.buy_orders.keys())
             best_ask = min(order_depth.sell_orders.keys())
             S = (best_bid + best_ask) / 2
 
-            ## IMPLIED VOLATILITY FOR ALL VOUCHERS ##
             for voucher_name, K in self.voucher_strikes.items():
                 if state.order_depths[voucher_name].buy_orders and state.order_depths[voucher_name].sell_orders:
-                    best_bid = max(state.order_depths[voucher_name].buy_orders)
-                    best_ask = min(state.order_depths[voucher_name].sell_orders)
-                    mid = (best_bid + best_ask) / 2
-                    m = (np.log(K/S))/np.sqrt(T)
+                    v_bid = max(state.order_depths[voucher_name].buy_orders)
+                    v_ask = min(state.order_depths[voucher_name].sell_orders)
+                    mid = (v_bid + v_ask) / 2
+                    m = (np.log(K / S)) / np.sqrt(T)
                     if abs(m) > 0.075:
                         continue
                     iv = implied_vol(mid, S, K, T)
                     if iv is not None:
-                        voucher_data[voucher_name] = {"iv": iv, "mid": mid, "moneyness": m}
+                        voucher_data[voucher_name] = {"iv": iv, "mid": mid, "moneyness": m, "v_bid": v_bid, "v_ask": v_ask}
 
             moneynesses = [data["moneyness"] for data in voucher_data.values()]
             ivs = [data["iv"] for data in voucher_data.values()]
 
             if len(ivs) >= 5:
-
-                ## FIT SMILE AND FIND DEVIATION ##
-                coeffs = np.polyfit(moneynesses, ivs, deg=2)
+                coeffs = np.polyfit(moneynesses, ivs, deg=3)
                 for voucher_name, data in voucher_data.items():
                     voucher_orders[voucher_name] = []
                     product_position = state.position.get(voucher_name, 0)
@@ -177,9 +177,10 @@ class Trader:
                     market_iv = data["iv"]
                     fitted_iv = np.polyval(coeffs, m)
                     deviation = market_iv - fitted_iv
-                    if abs(deviation) >= 5e-3:
+                    v_bid = data["v_bid"]
+                    v_ask = data["v_ask"]
 
-                        ## TRADE ##
+                    if abs(deviation) >= AGGRESSIVE_THRESHOLD:
                         if deviation > 0:
                             for price, quantity in sorted(state.order_depths[voucher_name].buy_orders.items(), reverse=True):
                                 if product_position <= -max_position:
@@ -195,6 +196,21 @@ class Trader:
                                 buy_quantity = min(max_position - product_position, -quantity)
                                 voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
                                 product_position += buy_quantity
+
+                    elif abs(deviation) >= PASSIVE_THRESHOLD:
+                        if deviation > 0:
+                            post_price = v_ask - 1
+                            if post_price >= v_bid and product_position > -max_position:
+                                sell_quantity = max_position + product_position
+                                if sell_quantity > 0:
+                                    voucher_orders[voucher_name].append(Order(voucher_name, post_price, -sell_quantity))
+
+                        elif deviation < 0:
+                            post_price = v_bid + 1
+                            if post_price <= v_ask and product_position < max_position:
+                                buy_quantity = max_position - product_position
+                                if buy_quantity > 0:
+                                    voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
 
         return voucher_orders
 
