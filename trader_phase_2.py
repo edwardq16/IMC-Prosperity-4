@@ -73,12 +73,12 @@ class Trader:
         ## MARKET MAKE ##
 
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 1
-            std = 0.000217
+            gamma = 1e-10
+            std = 31.521
             bid_size = max_position - product_position
             ask_size = max_position + product_position
             reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
-            spread = 2
+            spread = 8
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
@@ -116,12 +116,12 @@ class Trader:
         ## MARKET MAKE ##
 
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 1
-            std = 0.000215
+            gamma = 5e-10
+            std = 15.092
             bid_size = max_position - product_position
             ask_size = max_position + product_position
             reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
-            spread = 2
+            spread = 9
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
