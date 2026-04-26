@@ -3,6 +3,8 @@ import math
 from datamodel import TradingState, Order
 from typing import Dict, List
 
+TICKS= 10_000
+
 def norm_cdf(x):
     return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
@@ -79,7 +81,7 @@ class Trader:
             std = 31.521
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000 - state.timestamp)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * (TICKS - state.timestamp)
             spread = 12
 
             if bid_size > 0:
@@ -127,7 +129,7 @@ class Trader:
             std = 15.092
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000 - state.timestamp)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * (TICKS - state.timestamp)
             spread = 4
 
             if bid_size > 0:
@@ -146,7 +148,7 @@ class Trader:
         max_position = 300
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
-        T = 5 - state.timestamp / 1_000_000
+        T = 5 - state.timestamp / TICKS 
 
         AGGRESSIVE_THRESHOLD = 0.0010
         PASSIVE_THRESHOLD = 0.0001
