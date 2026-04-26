@@ -54,8 +54,6 @@ class Trader:
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        bid_vol = order_depth.buy_orders[best_bid]
-        ask_vol = abs(order_depth.sell_orders[best_ask])
         fair_price = (best_bid + best_ask) / 2
 
         ## ARBITRAGE ##
@@ -145,7 +143,7 @@ class Trader:
         max_position = 300
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
-        T = 5 - state.timestamp / 1_000_000
+        T = 5 - state.timestamp / 100_000
 
         AGGRESSIVE_THRESHOLD = 0.0010
         PASSIVE_THRESHOLD = 0.0001
