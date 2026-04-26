@@ -57,6 +57,7 @@ class Trader:
         bid_vol = order_depth.buy_orders[best_bid]
         ask_vol = abs(order_depth.sell_orders[best_ask])
         fair_price = (best_bid * bid_vol + best_ask * ask_vol) / (bid_vol + ask_vol)
+        fair_price = (best_bid + best_ask) / 2
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -74,11 +75,11 @@ class Trader:
         ## MARKET MAKE ##
 
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 4e-9
+            gamma = 6e-8
             std = 31.521
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000 - state.timestamp)
             spread = 12
 
             if bid_size > 0:
@@ -100,9 +101,11 @@ class Trader:
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
+        print(f"bid:{best_bid} ask:{best_ask} spread:{best_ask - best_bid}")
         bid_vol = order_depth.buy_orders[best_bid]
         ask_vol = abs(order_depth.sell_orders[best_ask])
         fair_price = (best_bid * bid_vol + best_ask * ask_vol) / (bid_vol + ask_vol)
+        fair_price = (best_bid + best_ask) / 2
 
         ## ARBITRAGE ##
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -120,11 +123,11 @@ class Trader:
         ## MARKET MAKE ##
 
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 2e-8
+            gamma = 2.5e-7
             std = 15.092
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000_000 - state.timestamp)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * (1_000 - state.timestamp)
             spread = 4
 
             if bid_size > 0:
