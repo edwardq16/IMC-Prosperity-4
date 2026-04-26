@@ -191,7 +191,11 @@ class Trader:
                                 if product_position <= -max_position:
                                     break
                                 sell_quantity = min(max_position + product_position, quantity)
-                                voucher_orders[voucher_name].append(Order(voucher_name, price, -sell_quantity))
+                                if voucher_name == "VEV_5500":
+                                    pass
+                                else:
+                                    voucher_orders[voucher_name].append(Order(voucher_name, price, -sell_quantity))
+
                                 product_position -= sell_quantity
 
                         elif deviation < 0:
@@ -199,7 +203,11 @@ class Trader:
                                 if product_position >= max_position:
                                     break
                                 buy_quantity = min(max_position - product_position, -quantity)
-                                voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
+                                if voucher_name == "VEV_5500":
+                                    pass
+                                else:
+                                    voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
+
                                 product_position += buy_quantity
 
                     elif abs(deviation) >= PASSIVE_THRESHOLD:
@@ -208,14 +216,22 @@ class Trader:
                             if post_price >= v_bid and product_position > -max_position:
                                 sell_quantity = max_position + product_position
                                 if sell_quantity > 0:
-                                    voucher_orders[voucher_name].append(Order(voucher_name, post_price, -sell_quantity))
+                                    if voucher_name == "VEV_5500":
+                                        pass
+                                    else:
+                                        voucher_orders[voucher_name].append(Order(voucher_name, post_price, -sell_quantity))
 
                         elif deviation < 0:
                             post_price = v_bid + 1
                             if post_price <= v_ask and product_position < max_position:
                                 buy_quantity = max_position - product_position
                                 if buy_quantity > 0:
-                                    voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
+                                    if voucher_name == "VEV_5500":
+                                        pass
+                                    else:
+                                        voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
+
+
 
         return voucher_orders
 
