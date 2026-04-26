@@ -3,8 +3,6 @@ import math
 from datamodel import TradingState, Order
 from typing import Dict, List
 
-TICKS= 10_000
-
 def norm_cdf(x):
     return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
@@ -56,20 +54,18 @@ class Trader:
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        bid_vol = order_depth.buy_orders[best_bid]
-        ask_vol = abs(order_depth.sell_orders[best_ask])
-        fair_price = (best_bid * bid_vol + best_ask * ask_vol) / (bid_vol + ask_vol)
         fair_price = (best_bid + best_ask) / 2
 
         ## ARBITRAGE ##
+        arb_limit = 50
         for price, quantity in sorted(order_depth.sell_orders.items()):
-            if price < fair_price and product_position < max_position:
+            if price < fair_price and product_position < arb_limit:
                 buy_quantity = min(max_position - product_position, -quantity)
                 orders.append(Order(product, price, buy_quantity))
                 product_position += buy_quantity
 
         for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-            if price > fair_price and product_position > -max_position:
+            if price > fair_price and product_position > -arb_limit:
                 sell_quantity = min(max_position + product_position, quantity)
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
@@ -81,7 +77,8 @@ class Trader:
             std = 31.521
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * (TICKS - state.timestamp)
+            time_remaining = max(0, 1000 - state.timestamp // 100)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * time_remaining
             spread = 12
 
             if bid_size > 0:
@@ -103,21 +100,18 @@ class Trader:
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        print(f"bid:{best_bid} ask:{best_ask} spread:{best_ask - best_bid}")
-        bid_vol = order_depth.buy_orders[best_bid]
-        ask_vol = abs(order_depth.sell_orders[best_ask])
-        fair_price = (best_bid * bid_vol + best_ask * ask_vol) / (bid_vol + ask_vol)
         fair_price = (best_bid + best_ask) / 2
 
         ## ARBITRAGE ##
+        arb_limit = 50
         for price, quantity in sorted(order_depth.sell_orders.items()):
-            if price < fair_price and product_position < max_position:
+            if price < fair_price and product_position < arb_limit:
                 buy_quantity = min(max_position - product_position, -quantity)
                 orders.append(Order(product, price, buy_quantity))
                 product_position += buy_quantity
 
         for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-            if price > fair_price and product_position > -max_position:
+            if price > fair_price and product_position > -arb_limit:
                 sell_quantity = min(max_position + product_position, quantity)
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
@@ -129,7 +123,8 @@ class Trader:
             std = 15.092
             bid_size = max(0, max_position - product_position)
             ask_size = max(0, max_position + product_position)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * (TICKS - state.timestamp)
+            time_remaining = max(0, 1000 - state.timestamp // 100)
+            reservation_price = fair_price - product_position * gamma * (std ** 2) * time_remaining
             spread = 4
 
             if bid_size > 0:
@@ -148,7 +143,7 @@ class Trader:
         max_position = 300
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
-        T = 5 - state.timestamp / TICKS 
+        T = 5 - state.timestamp / 100_000
 
         AGGRESSIVE_THRESHOLD = 0.0010
         PASSIVE_THRESHOLD = 0.0001
