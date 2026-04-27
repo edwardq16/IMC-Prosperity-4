@@ -60,6 +60,7 @@ class Trader:
         best_bid_vol = order_depth.buy_orders[best_bid]
         best_ask_vol = -order_depth.sell_orders[best_ask]
         imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+        imbalance = max(-0.5, min(0.5, imbalance))
 
         spread = max(2, best_ask - best_bid)
         mid = (best_bid + best_ask) / 2
@@ -121,6 +122,7 @@ class Trader:
         best_bid_vol = order_depth.buy_orders[best_bid]
         best_ask_vol = -order_depth.sell_orders[best_ask]
         imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+        imbalance = max(-0.5, min(0.5, imbalance))
 
         spread = max(2, best_ask - best_bid)
         mid = (best_bid + best_ask) / 2
