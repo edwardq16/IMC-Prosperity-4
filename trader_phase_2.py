@@ -167,6 +167,7 @@ class Trader:
 
         return orders
 
+   
     def trade_vev(self, state: TradingState) -> Dict[str, List[Order]]:
         voucher_orders = {}
         voucher_data = {}
@@ -174,6 +175,10 @@ class Trader:
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
         T = 5 - state.timestamp / 100_000
+
+        if order_depth.buy_orders and order_depth.sell_orders and T > 0:
+            best_bid = max(order_depth.buy_orders.keys())
+            best_ask = min(order_depth.sell_orders.keys())
 
         AGGRESSIVE_THRESHOLD = 0.0010
         PASSIVE_THRESHOLD = 0.0001
@@ -216,10 +221,7 @@ class Trader:
                                 if product_position <= -max_position:
                                     break
                                 sell_quantity = min(max_position + product_position, quantity)
-                                if voucher_name == "VEV_5500":
-                                    pass
-                                else:
-                                    voucher_orders[voucher_name].append(Order(voucher_name, price, -sell_quantity))
+                                voucher_orders[voucher_name].append(Order(voucher_name, price, -sell_quantity))
 
                                 product_position -= sell_quantity
 
@@ -228,10 +230,7 @@ class Trader:
                                 if product_position >= max_position:
                                     break
                                 buy_quantity = min(max_position - product_position, -quantity)
-                                if voucher_name == "VEV_5500":
-                                    pass
-                                else:
-                                    voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
+                                voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
 
                                 product_position += buy_quantity
 
@@ -241,20 +240,14 @@ class Trader:
                             if post_price >= v_bid and product_position > -max_position:
                                 sell_quantity = max_position + product_position
                                 if sell_quantity > 0:
-                                    if voucher_name == "VEV_5500":
-                                        pass
-                                    else:
-                                        voucher_orders[voucher_name].append(Order(voucher_name, post_price, -sell_quantity))
+                                    voucher_orders[voucher_name].append(Order(voucher_name, post_price, -sell_quantity))
 
                         elif deviation < 0:
                             post_price = v_bid + 1
                             if post_price <= v_ask and product_position < max_position:
                                 buy_quantity = max_position - product_position
                                 if buy_quantity > 0:
-                                    if voucher_name == "VEV_5500":
-                                        pass
-                                    else:
-                                        voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
+                                    voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
 
 
 
