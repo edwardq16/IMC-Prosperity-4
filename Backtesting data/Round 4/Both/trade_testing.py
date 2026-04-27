@@ -22,21 +22,58 @@ df6["day"] = 3
 
 prices = pd.concat([df4, df5, df6], ignore_index=True)
 
-horizon = 50
 price_lookup = {}
-
 for (day, product), group in prices.groupby(['day', 'product']):
     g = group.sort_values('timestamp')
     price_lookup[(day, product)] = (g['timestamp'].values, g['mid_price'].values)
 
 def get_mid_at(day, product, timestamp):
-    time = price_lookup[(day, product)][0]
-    mid_price = price_lookup[(day, product)][1]
+    key = (day, product)
+    times, mids = price_lookup[key]
+    position = np.searchsorted(times, timestamp, side='left')
+    if position >= len(times):
+        return np.nan
+    return mids[position]
 
-    position = np.searchsorted(time, timestamp, side='left')
+horizons = [100, 500, 2000, 10000]
 
-    return mid_price[position]
+for h in horizons:
+    trades[f'future_mid_{h}'] = trades.apply(lambda row: get_mid_at(row['day'], row['symbol'], row['timestamp'] + h), axis=1)
+    trades[f'buyer_mo_{h}']  = trades[f'future_mid_{h}'] - trades['price']
+    trades[f'seller_mo_{h}'] = trades['price'] - trades[f'future_mid_{h}']
 
-horizon = 500
+print("\n=== Per-day buyer markout (horizon=500) ===")
+per_day_buy = trades.groupby(['day', 'symbol', 'buyer'])['buyer_mo_500'].agg(['mean', 'count'])
+print(per_day_buy)
 
+print("\n=== Per-day seller markout (horizon=500) ===")
+per_day_sell = trades.groupby(['day', 'symbol', 'seller'])['seller_mo_500'].agg(['mean', 'count'])
+print(per_day_sell)
 
+prices['spread'] = prices['ask_price_1'] - prices['bid_price_1']
+print("\n=== Bid-ask spread by product ===")
+print(prices.groupby('product')['spread'].agg(['mean', 'median']))
+
+print("\n=== Volume by buyer (sum and mean trade size) ===")
+print(trades.groupby(['symbol', 'buyer'])['quantity'].agg(['sum', 'mean', 'count']))
+
+print("\n=== Volume by seller (sum and mean trade size) ===")
+print(trades.groupby(['symbol', 'seller'])['quantity'].agg(['sum', 'mean', 'count']))
+
+print("\n=== Buyer markout across horizons (mean) ===")
+agg_cols = [f'buyer_mo_{h}' for h in horizons]
+print(trades.groupby(['symbol', 'buyer'])[agg_cols].mean())
+
+print("\n=== Seller markout across horizons (mean) ===")
+agg_cols = [f'seller_mo_{h}' for h in horizons]
+print(trades.groupby(['symbol', 'seller'])[agg_cols].mean())
+
+trades['mid_at_trade'] = trades.apply(lambda row: get_mid_at(row['day'], row['symbol'], row['timestamp']), axis=1)
+
+trades['price_vs_mid'] = trades['price'] - trades['mid_at_trade']
+
+print("\n=== Buyer: trade price vs mid (positive = bought ABOVE mid, i.e. lifted offer) ===")
+print(trades.groupby(['symbol', 'buyer'])['price_vs_mid'].agg(['mean', 'std', 'count']))
+
+print("\n=== Seller: trade price vs mid (positive = sold ABOVE mid, i.e. hit by aggressor or sat on offer) ===")
+print(trades.groupby(['symbol', 'seller'])['price_vs_mid'].agg(['mean', 'std', 'count']))
