@@ -64,8 +64,29 @@ class Trader:
 
         spread = max(2, best_ask - best_bid)
         mid = (best_bid + best_ask) / 2
-        k = 3
+        k = spread * 0.15
         fair_price = mid + k * imbalance
+
+        ## MARKET MAKE ##
+        if order_depth.buy_orders and order_depth.sell_orders:
+            inv = product_position / max_position
+            kappa = 0.5
+            base_size = 40
+            bid_size = max(0, int(base_size * (1 - inv)))
+            ask_size = max(0, int(base_size * (1 + inv)))
+
+            shave = max(1, int(spread * 0.15))
+            reservation_price = fair_price - kappa * inv
+            bid_price = round(reservation_price - spread / 2 + shave)
+            ask_price = round(reservation_price + spread / 2 - shave)
+
+            if bid_size > 0:
+                orders.append(Order(product, bid_price, bid_size))
+                product_position += bid_size
+
+            if ask_size > 0:
+                orders.append(Order(product, ask_price, -ask_size))
+                product_position -= ask_size
 
         ## ARBITRAGE ##
         arb_limit = 80
@@ -84,25 +105,6 @@ class Trader:
                 sell_quantity = min(max_position + product_position, quantity)
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
-
-        ## MARKET MAKE ##
-        if order_depth.buy_orders and order_depth.sell_orders:
-            inv = product_position / max_position
-            kappa = 0.5
-            base_size = 20
-            bid_size = max(0, int(base_size * (1 - inv)))
-            ask_size = max(0, int(base_size * (1 + inv)))
-
-            spread *= 0.9
-            reservation_price = fair_price - kappa * inv
-
-            if bid_size > 0:
-                orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
-                product_position += bid_size
-
-            if ask_size > 0:
-                orders.append(Order(product, round(reservation_price + spread / 2), -ask_size))
-                product_position -= ask_size
 
         return orders
 
@@ -126,7 +128,7 @@ class Trader:
 
         spread = max(2, best_ask - best_bid)
         mid = (best_bid + best_ask) / 2
-        k = 3
+        k = spread * 0.15
         fair_price = mid + k * imbalance
 
         ## DELTA HEDGE ##
@@ -135,45 +137,32 @@ class Trader:
             for voucher_name, data in hedge_data.items():
                 hedge_target += -data["delta"] * data["position"]
         hedge_target = round(hedge_target)
-        hedge_needed = hedge_target - product_position
+        hedge_needed = hedge_target
+        hedge_needed = max(-20, min(20, hedge_needed))
+
+        if abs(hedge_needed) < 5:
+            return []
 
         if hedge_needed > 0:
-            for price, quantity in sorted(order_depth.sell_orders.items()):
-                if hedge_needed <= 0:
-                    break
-                buy_quantity = min(hedge_needed, -quantity, max_position - product_position)
-                if buy_quantity > 0:
-                    orders.append(Order(product, price, buy_quantity))
-                    product_position += buy_quantity
-                    hedge_needed -= buy_quantity
+            price = min(order_depth.sell_orders)
+            quantity = -order_depth.sell_orders[price]
 
-        elif hedge_needed < 0:
-            for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-                if hedge_needed >= 0:
-                    break
-                sell_quantity = min(-hedge_needed, quantity, max_position + product_position)
-                if sell_quantity > 0:
-                    orders.append(Order(product, price, -sell_quantity))
-                    product_position -= sell_quantity
-                    hedge_needed += sell_quantity
+            buy_quantity = min(hedge_needed, quantity, max_position - product_position)
 
-        ## ARBITRAGE ##
-        arb_limit = 80
-        for price, quantity in sorted(order_depth.sell_orders.items()):
-            edge = fair_price - price
-
-            if edge > spread / 2 and product_position < arb_limit:
-                buy_quantity = min(max_position - product_position, -quantity)
+            if buy_quantity > 0:
                 orders.append(Order(product, price, buy_quantity))
                 product_position += buy_quantity
+                hedge_needed -= buy_quantity
 
-        for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-            edge = price - fair_price
+        elif hedge_needed < 0:
+            price = max(order_depth.buy_orders)
+            quantity = order_depth.buy_orders[price]
+            sell_quantity = min(-hedge_needed, quantity, max_position + product_position)
 
-            if edge > spread / 2 and product_position > -arb_limit:
-                sell_quantity = min(max_position + product_position, quantity)
+            if sell_quantity > 0:
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
+                hedge_needed += sell_quantity
 
         ## MARKET MAKE ##
         if order_depth.buy_orders and order_depth.sell_orders:
@@ -193,6 +182,24 @@ class Trader:
             if ask_size > 0:
                 orders.append(Order(product, round(reservation_price + spread / 2), -ask_size))
                 product_position -= ask_size
+
+        ## ARBITRAGE ##
+        arb_limit = 80
+        for price, quantity in sorted(order_depth.sell_orders.items()):
+            edge = fair_price - price
+
+            if edge > spread / 2 and product_position < arb_limit:
+                buy_quantity = min(max_position - product_position, -quantity)
+                orders.append(Order(product, price, buy_quantity))
+                product_position += buy_quantity
+
+        for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
+            edge = price - fair_price
+
+            if edge > spread / 2 and product_position > -arb_limit:
+                sell_quantity = min(max_position + product_position, quantity)
+                orders.append(Order(product, price, -sell_quantity))
+                product_position -= sell_quantity
 
         return orders
 
