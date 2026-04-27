@@ -44,8 +44,9 @@ def implied_vol(C_mkt, S, K, T, tolerance=1e-5, max_iterations=100):
     return mid
 
 # test cases
-print(implied_vol(100, 5250, 5200, 5.0))
-print(implied_vol(270, 5250, 5000, 5.0))   # VEV 5000
-print(implied_vol(180, 5250, 5100, 5.0))   # VEV 5100
-print(implied_vol(50,  5250, 5300, 5.0))   # VEV 5300
-print(implied_vol(16,  5250, 5400, 5.0))   # VEV 5400
+S = 5267.5
+print(implied_vol(270, S, 5000, 5.0))
+print(implied_vol(179, S, 5100, 5.0))
+print(implied_vol(104, S, 5200, 5.0))
+print(implied_vol(53,  S, 5300, 5.0))
+print(implied_vol(17,  S, 5400, 5.0))
