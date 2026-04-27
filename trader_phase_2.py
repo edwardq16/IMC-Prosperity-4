@@ -173,7 +173,7 @@ class Trader:
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
 
-        ## MARKET MAKE — capacity reserved after hedge + arb ##
+        ## MARKET MAKE ##
         if order_depth.buy_orders and order_depth.sell_orders:
             inv = product_position / max_position
             kappa = 0.5
