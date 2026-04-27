@@ -60,6 +60,7 @@ class Trader:
         best_bid_vol = order_depth.buy_orders[best_bid]
         best_ask_vol = -order_depth.sell_orders[best_ask]
         imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+        imbalance = max(-0.5, min(0.5, imbalance))
 
         spread = max(2, best_ask - best_bid)
         mid = (best_bid + best_ask) / 2
@@ -121,6 +122,7 @@ class Trader:
         best_bid_vol = order_depth.buy_orders[best_bid]
         best_ask_vol = -order_depth.sell_orders[best_ask]
         imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+        imbalance = max(-0.5, min(0.5, imbalance))
 
         spread = max(2, best_ask - best_bid)
         mid = (best_bid + best_ask) / 2
@@ -173,7 +175,7 @@ class Trader:
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
 
-        ## MARKET MAKE — capacity reserved after hedge + arbitrage ##
+        ## MARKET MAKE ##
         if order_depth.buy_orders and order_depth.sell_orders:
             inv = product_position / max_position
             kappa = 0.5
@@ -202,7 +204,7 @@ class Trader:
         max_position = 300
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
-        T = 4 - state.timestamp / 100_000
+        T = 5 - state.timestamp / 100_000
 
         if order_depth.buy_orders and order_depth.sell_orders and T > 0:
             best_bid = max(order_depth.buy_orders.keys())
@@ -282,7 +284,8 @@ class Trader:
                                 if buy_quantity > 0:
                                     voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
 
-        return voucher_orders, hedge_data
+
+        return voucher_orders, hedge_data 
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
