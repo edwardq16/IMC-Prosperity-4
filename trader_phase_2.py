@@ -173,7 +173,7 @@ class Trader:
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
 
-        ## MARKET MAKE — capacity reserved after hedge + arb ##
+        ## MARKET MAKE — capacity reserved after hedge + arbitrage ##
         if order_depth.buy_orders and order_depth.sell_orders:
             inv = product_position / max_position
             kappa = 0.5
@@ -202,7 +202,7 @@ class Trader:
         max_position = 300
         underlying = "VELVETFRUIT_EXTRACT"
         order_depth = state.order_depths[underlying]
-        T = 5 - state.timestamp / 100_000
+        T = 4 - state.timestamp / 100_000
 
         if order_depth.buy_orders and order_depth.sell_orders and T > 0:
             best_bid = max(order_depth.buy_orders.keys())
@@ -282,9 +282,7 @@ class Trader:
                                 if buy_quantity > 0:
                                     voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
 
-
-
-        return {}, {}
+        return voucher_orders, hedge_data
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
