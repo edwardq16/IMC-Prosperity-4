@@ -283,8 +283,7 @@ class Trader:
                                     voucher_orders[voucher_name].append(Order(voucher_name, post_price, buy_quantity))
 
 
-
-        return {}, {}
+        return voucher_orders, hedge_data 
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
