@@ -51,34 +51,49 @@ class Trader:
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
         max_position = 200
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        fair_price = (best_bid + best_ask) / 2
+
+        best_bid_vol = order_depth.buy_orders[best_bid]
+        best_ask_vol = -order_depth.sell_orders[best_ask]
+        imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+
+        spread = max(2, best_ask - best_bid)
+        mid = (best_bid + best_ask) / 2
+        k = 3
+        fair_price = mid + k * imbalance
 
         ## ARBITRAGE ##
-        arb_limit = 50
+        arb_limit = 80
         for price, quantity in sorted(order_depth.sell_orders.items()):
-            if price < fair_price and product_position < arb_limit:
+            edge = fair_price - price
+
+            if edge > spread / 2 and product_position < arb_limit:
                 buy_quantity = min(max_position - product_position, -quantity)
                 orders.append(Order(product, price, buy_quantity))
                 product_position += buy_quantity
 
         for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-            if price > fair_price and product_position > -arb_limit:
+            edge = price - fair_price
+
+            if edge > spread / 2 and product_position > -arb_limit:
                 sell_quantity = min(max_position + product_position, quantity)
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
 
         ## MARKET MAKE ##
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 6e-8
-            std = 31.521
-            bid_size = max(0, max_position - product_position)
-            ask_size = max(0, max_position + product_position)
-            time_remaining = max(0, 1000 - state.timestamp // 100)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * time_remaining
-            spread = 12
+            inv = product_position / max_position
+            kappa = 0.5
+            base_size = 20
+            bid_size = max(0, int(base_size * (1 - inv)))
+            ask_size = max(0, int(base_size * (1 + inv)))
+
+            spread *= 0.9
+            reservation_price = fair_price - kappa * inv
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
@@ -96,10 +111,21 @@ class Trader:
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
         max_position = 200
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders
 
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
-        fair_price = (best_bid + best_ask) / 2
+
+
+        best_bid_vol = order_depth.buy_orders[best_bid]
+        best_ask_vol = -order_depth.sell_orders[best_ask]
+        imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+
+        spread = max(2, best_ask - best_bid)
+        mid = (best_bid + best_ask) / 2
+        k = 3
+        fair_price = mid + k * imbalance
 
         ## DELTA HEDGE ##
         hedge_target = 0
@@ -130,28 +156,33 @@ class Trader:
                     hedge_needed += sell_quantity
 
         ## ARBITRAGE ##
-        arb_limit = 50
+        arb_limit = 80
         for price, quantity in sorted(order_depth.sell_orders.items()):
-            if price < fair_price and product_position < arb_limit:
+            edge = fair_price - price
+
+            if edge > spread / 2 and product_position < arb_limit:
                 buy_quantity = min(max_position - product_position, -quantity)
                 orders.append(Order(product, price, buy_quantity))
                 product_position += buy_quantity
 
         for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
-            if price > fair_price and product_position > -arb_limit:
+            edge = price - fair_price
+
+            if edge > spread / 2 and product_position > -arb_limit:
                 sell_quantity = min(max_position + product_position, quantity)
                 orders.append(Order(product, price, -sell_quantity))
                 product_position -= sell_quantity
 
         ## MARKET MAKE — capacity reserved after hedge + arb ##
         if order_depth.buy_orders and order_depth.sell_orders:
-            gamma = 2.5e-7
-            std = 15.092
-            bid_size = max(0, max_position - product_position)
-            ask_size = max(0, max_position + product_position)
-            time_remaining = max(0, 1000 - state.timestamp // 100)
-            reservation_price = fair_price - product_position * gamma * (std ** 2) * time_remaining
-            spread = 4
+            inv = product_position / max_position
+            kappa = 0.5
+            base_size = 20
+            bid_size = max(0, int(base_size * (1 - inv)))
+            ask_size = max(0, int(base_size * (1 + inv)))
+
+            spread *= 0.9
+            reservation_price = fair_price - kappa * inv
 
             if bid_size > 0:
                 orders.append(Order(product, round(reservation_price - spread / 2), bid_size))
@@ -190,7 +221,7 @@ class Trader:
                     v_bid = max(state.order_depths[voucher_name].buy_orders)
                     v_ask = min(state.order_depths[voucher_name].sell_orders)
                     mid = (v_bid + v_ask) / 2
-                    m = (np.log(K / S)) / np.sqrt(T)
+                    m = (np.log(S / K)) / np.sqrt(T)
                     if abs(m) > 0.075:
                         continue
                     iv = implied_vol(mid, S, K, T)
