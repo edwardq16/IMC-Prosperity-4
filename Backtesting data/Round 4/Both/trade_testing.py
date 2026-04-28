@@ -77,3 +77,13 @@ print(trades.groupby(['symbol', 'buyer'])['price_vs_mid'].agg(['mean', 'std', 'c
 
 print("\n=== Seller: trade price vs mid (positive = sold ABOVE mid, i.e. hit by aggressor or sat on offer) ===")
 print(trades.groupby(['symbol', 'seller'])['price_vs_mid'].agg(['mean', 'std', 'count']))
+
+mark38_hp = trades[(trades['symbol'] == 'HYDROGEL_PACK') & ((trades['buyer'] == 'Mark 38') | (trades['seller'] == 'Mark 38'))].sort_values(['day', 'timestamp']).copy()
+
+mark38_hp['gap'] = mark38_hp.groupby('day')['timestamp'].diff()
+
+print("Mark 38 in HYDROGEL — gaps between consecutive trades:")
+print(mark38_hp['gap'].describe())
+print(f"\nFraction of gaps ≤ 100:  {(mark38_hp['gap'] <= 100).mean():.2%}")
+print(f"Fraction of gaps ≤ 300:  {(mark38_hp['gap'] <= 300).mean():.2%}")
+print(f"Fraction of gaps ≤ 1000: {(mark38_hp['gap'] <= 1000).mean():.2%}")
