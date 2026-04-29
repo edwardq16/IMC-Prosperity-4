@@ -5,7 +5,7 @@ from typing import Dict, List
 
 class Trader:
 
-    def trade_pebbles_etf(self, state: TradingState) -> Dict[str, List[Order]]:
+    def trade_pebbles_basket_arb(self, state: TradingState) -> Dict[str, List[Order]]:
         pebbles_basket = ["PEBBLES_M", "PEBBLES_S", "PEBBLES_L", "PEBBLES_XS", "PEBBLES_XL"]
         max_pos = 10
         basket_price = 50000
@@ -18,8 +18,8 @@ class Trader:
         mid_price = {}
 
         for i in pebbles_basket:
-            best_bids[i] = max(state.order_depths.buy_orders.keys())
-            best_asks[i] = min(state.order_depths.sell_orders.keys())
+            best_bids[i] = max(state.order_depths[i].buy_orders.keys())
+            best_asks[i] = min(state.order_depths[i].sell_orders.keys())
             mid_price[i] = (best_bids[i] + best_asks[i]) / 2
 
         basket_sum = sum(mid_price.values())
@@ -52,12 +52,70 @@ class Trader:
 
         return orders
 
+    def trade_hp(self, state: TradingState, product: str) -> List[Order]:
+        orders = []
+        product_position = state.position.get(product, 0)
+        order_depth = state.order_depths[product]
+        max_position = 200
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders
+
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
+
+        best_bid_vol = order_depth.buy_orders[best_bid]
+        best_ask_vol = -order_depth.sell_orders[best_ask]
+        imbalance = (best_bid_vol - best_ask_vol) / (best_bid_vol + best_ask_vol)
+        imbalance = max(-0.5, min(0.5, imbalance))
+
+        spread = max(2, best_ask - best_bid)
+        mid = (best_bid + best_ask) / 2
+
+        k = spread * 0.15
+        fair_price = mid + k * imbalance
+
+        ## ARBITRAGE ##
+        arb_limit = 80
+        arb_threshold = spread * 0.45
+
+        for price, quantity in sorted(order_depth.sell_orders.items()):
+            edge = fair_price - price
+            if edge > arb_threshold and product_position < arb_limit:
+                buy_quantity = min(max_position - product_position, -quantity)
+                orders.append(Order(product, price, buy_quantity))
+                product_position += buy_quantity
+
+        for price, quantity in sorted(order_depth.buy_orders.items(), reverse=True):
+            edge = price - fair_price
+            if edge > arb_threshold and product_position > -arb_limit:
+                sell_quantity = min(max_position + product_position, quantity)
+                orders.append(Order(product, price, -sell_quantity))
+                product_position -= sell_quantity
+
+        ## MARKET MAKE ##
+        if order_depth.buy_orders and order_depth.sell_orders:
+            inv = product_position / max_position
+            kappa = 0.5
+            base_size = 20
+            bid_size = max(0, int(base_size * (1 - inv)))
+            ask_size = max(0, int(base_size * (1 + inv)))
+
+            spread *= 0.9
+            reservation_price = fair_price - kappa * inv
+
+            if bid_size > 0:
+                bid_price = round(reservation_price - spread / 2)
+                orders.append(Order(product, bid_price, bid_size))
+
+            if ask_size > 0:
+                ask_price = round(reservation_price + spread / 2)
+                orders.append(Order(product, ask_price, -ask_size))
+
+        return orders
+
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
 
-        pebbles_orders = self.trade_pebbles_etf(state)
-        for product, order_list in pebbles_orders.items():
-            result.setdefault(product, []).extend(order_list)
 
         traderData = ""
         conversions = 0
