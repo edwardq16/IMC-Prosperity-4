@@ -138,7 +138,6 @@ class Trader:
         hedge_target = round(hedge_target)
         hedge_error = hedge_target - product_position
 
-        # NEW: deadband — only hedge if we're far enough off target
         deadband = 200
         if abs(hedge_error) < deadband:
             hedge_needed = 0
@@ -217,8 +216,8 @@ class Trader:
             best_bid = max(order_depth.buy_orders.keys())
             best_ask = min(order_depth.sell_orders.keys())
 
-        AGGRESSIVE_THRESHOLD = 0.0010
-        PASSIVE_THRESHOLD = 0.0001
+        aggro_threshold = 0.0010
+        pass_threshold = 0.0001
 
         if order_depth.buy_orders and order_depth.sell_orders and T > 0:
             best_bid = max(order_depth.buy_orders.keys())
@@ -257,7 +256,7 @@ class Trader:
                     delta = bs_delta(S, K, T, market_iv)
                     hedge_data[voucher_name] = {"delta": delta, "position": product_position}
 
-                    if abs(deviation) >= AGGRESSIVE_THRESHOLD:
+                    if abs(deviation) >= aggro_threshold:
                         if deviation > 0:
                             for price, quantity in sorted(state.order_depths[voucher_name].buy_orders.items(), reverse=True):
                                 if product_position <= -max_position:
@@ -274,7 +273,7 @@ class Trader:
                                 voucher_orders[voucher_name].append(Order(voucher_name, price, buy_quantity))
                                 product_position += buy_quantity
 
-                    elif abs(deviation) >= PASSIVE_THRESHOLD:
+                    elif abs(deviation) >= pass_threshold:
                         if deviation > 0:
                             post_price = v_ask - 1
                             if post_price >= v_bid and product_position > -max_position:
