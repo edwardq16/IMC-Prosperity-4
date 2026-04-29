@@ -56,7 +56,7 @@ class Trader:
         orders = []
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
-        max_position = 200
+        max_position = 10
         if not order_depth.buy_orders or not order_depth.sell_orders:
             return orders
 
@@ -75,7 +75,7 @@ class Trader:
         fair_price = mid + k * imbalance
 
         ## ARBITRAGE ##
-        arb_limit = 80
+        arb_limit = 10
         arb_threshold = spread * 0.45
 
         for price, quantity in sorted(order_depth.sell_orders.items()):
