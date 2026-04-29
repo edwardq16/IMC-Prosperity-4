@@ -4,6 +4,7 @@ from datamodel import TradingState, Order
 from typing import Dict, List
 
 class Trader:
+
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
         traderData = ""
