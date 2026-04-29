@@ -167,3 +167,7 @@ for group_name, products in [("PEBBLES", PEBBLES), ("SNACKPACK", SNACKPACK)]:
     per_day["range"] = per_day["max"] - per_day["min"]
     print("Per day:")
     print(per_day)
+
+df_pebbles = df[df['product'].str.startswith('PEBBLES')].copy()
+df_pebbles['spread'] = df_pebbles['ask_price_1'] - df_pebbles['bid_price_1']
+print(df_pebbles.groupby('product')['spread'].agg(['mean', 'median', 'min', 'max']))
