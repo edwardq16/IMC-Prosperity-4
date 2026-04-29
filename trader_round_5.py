@@ -52,7 +52,7 @@ class Trader:
 
         return orders
 
-    def trade_hp(self, state: TradingState, product: str) -> List[Order]:
+    def trade_mean_reverting(self, state: TradingState, product: str) -> List[Order]:
         orders = []
         product_position = state.position.get(product, 0)
         order_depth = state.order_depths[product]
@@ -116,6 +116,18 @@ class Trader:
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
 
+        mean_reverting = [
+            "UV_VISOR_ORANGE"
+            "ROBOT_VACUUMING"
+            "ROBOT_DISHES"
+            "PANEL_2X2"
+            "OXYGEN_SHAKE_MINT"
+            "MICROCHIP_TRIANGLE"
+        ]
+
+        for product in mean_reverting:
+            order_book = self.trade_mean_reverting(state, product)
+            result[product] = order_book
 
         traderData = ""
         conversions = 0
