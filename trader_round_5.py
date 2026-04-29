@@ -5,50 +5,164 @@ from typing import Dict, List
 
 class Trader:
 
-    def trade_pebbles_basket_arb(self, state: TradingState) -> Dict[str, List[Order]]:
-        pebbles_basket = ["PEBBLES_M", "PEBBLES_S", "PEBBLES_L", "PEBBLES_XS", "PEBBLES_XL"]
-        max_pos = 10
-        basket_price = 50000
-        quote_threshold = 3
-        skew_per_unit = 0.5
-        edge = 1
-        orders = {}
-        best_bids = {}
-        best_asks = {}
-        mid_price = {}
+    def trade_pairs(self, state: TradingState, product_a: str, product_b: str) -> List[Order]:
+        orders = []
 
-        for i in pebbles_basket:
-            best_bids[i] = max(state.order_depths[i].buy_orders.keys())
-            best_asks[i] = min(state.order_depths[i].sell_orders.keys())
-            mid_price[i] = (best_bids[i] + best_asks[i]) / 2
+        depth_a = state.order_depths.get(product_a)
+        depth_b = state.order_depths.get(product_b)
+        if depth_a is None or depth_b is None:
+            return orders
 
-        basket_sum = sum(mid_price.values())
-        error = basket_price - basket_sum
+        if not depth_a.buy_orders or not depth_a.sell_orders:
+            return orders
+        if not depth_b.buy_orders or not depth_b.sell_orders:
+            return orders
 
-        if abs(error) < quote_threshold:
-            return {}
+        best_bid_a = max(depth_a.buy_orders.keys())
+        best_ask_a = min(depth_a.sell_orders.keys())
+        mid_a = (best_bid_a + best_ask_a) / 2
 
-        leg_adj = error / 5
+        best_bid_b = max(depth_b.buy_orders.keys())
+        best_ask_b = min(depth_b.sell_orders.keys())
+        mid_b = (best_bid_b + best_ask_b) / 2
 
-        for i in pebbles_basket:
-            product_position = state.position.get(i, 0)
-            leg_fair = mid_price[i] + leg_adj
-            skew = product_position * skew_per_unit
-            bid_price = int(round(leg_fair - edge - skew))
-            ask_price = int(round(leg_fair + edge - skew))
-            bid_price = min(bid_price, best_asks[i] - 1)
-            ask_price = max(ask_price, best_bids[i] + 1)
-            buy_cap = max_pos - product_position
-            sell_cap = max_pos + product_position
-            leg_orders = []
+        ratio = mid_a / mid_b if mid_b != 0 else 1
 
-            if error > 0 and buy_cap > 0:
-                leg_orders.append(Order(i, bid_price, buy_cap))
-            if error < 0 and sell_cap > 0:
-                leg_orders.append(Order(i, ask_price, -sell_cap))
+        if not hasattr(self, "ratio_history"):
+            self.ratio_history = []
+        self.ratio_history.append(ratio)
 
-            if leg_orders:
-                orders[i] = leg_orders
+        window = 50
+        if len(self.ratio_history) < window:
+            return orders
+
+        hist = self.ratio_history[-window:]
+        mean_ratio = sum(hist) / window
+        var = sum((x - mean_ratio) ** 2 for x in hist) / window
+        std_ratio = var ** 0.5
+
+        if std_ratio == 0:
+            return orders
+
+        z = (ratio - mean_ratio) / std_ratio
+
+        pos_a = state.position.get(product_a, 0)
+        pos_b = state.position.get(product_b, 0)
+        max_position = 10
+
+        entry_z = 1.5
+        exit_z = 0.5
+        size = 3
+
+        if z > entry_z:
+            sell_a = min(size, max_position + pos_a)
+            buy_b = min(size, max_position - pos_b)
+
+            if sell_a > 0:
+                orders.append(Order(product_a, best_bid_a, -sell_a))
+            if buy_b > 0:
+                orders.append(Order(product_b, best_ask_b, buy_b))
+
+        elif z < -entry_z:
+            buy_a = min(size, max_position - pos_a)
+            sell_b = min(size, max_position + pos_b)
+
+            if buy_a > 0:
+                orders.append(Order(product_a, best_ask_a, buy_a))
+            if sell_b > 0:
+                orders.append(Order(product_b, best_bid_b, -sell_b))
+
+        elif abs(z) < exit_z:
+
+            if pos_a > 0:
+                orders.append(Order(product_a, best_bid_a, -pos_a))
+            elif pos_a < 0:
+                orders.append(Order(product_a, best_ask_a, -pos_a))
+
+            if pos_b > 0:
+                orders.append(Order(product_b, best_bid_b, -pos_b))
+            elif pos_b < 0:
+                orders.append(Order(product_b, best_ask_b, -pos_b))
+
+        return orders
+
+    def trade_pebbles_basket(self, state: TradingState) -> List[Order]:
+        orders = []
+
+        pebbles = ["PEBBLES_M", "PEBBLES_S", "PEBBLES_L", "PEBBLES_XS", "PEBBLES_XL"]
+
+        depths = {}
+        mids = {}
+
+        for p in pebbles:
+            depth = state.order_depths.get(p)
+            if depth is None:
+                return orders
+            if not depth.buy_orders or not depth.sell_orders:
+                return orders
+
+            best_bid = max(depth.buy_orders.keys())
+            best_ask = min(depth.sell_orders.keys())
+            mid = (best_bid + best_ask) / 2
+
+            depths[p] = depth
+            mids[p] = mid
+
+        total_price = sum(mids.values())
+        target_total = 50000
+
+        basket_edge = total_price - target_total
+
+        max_position = 10
+        positions = {p: state.position.get(p, 0) for p in pebbles}
+
+        threshold = 5
+        if basket_edge > threshold:
+            for p in pebbles:
+                depth = depths[p]
+                best_bid = max(depth.buy_orders.keys())
+
+                pos = positions[p]
+                sell_qty = min(2, max_position + pos)
+
+                if sell_qty > 0:
+                    orders.append(Order(p, best_bid, -sell_qty))
+                    positions[p] -= sell_qty
+
+        elif basket_edge < -threshold:
+            for p in pebbles:
+                depth = depths[p]
+                best_ask = min(depth.sell_orders.keys())
+
+                pos = positions[p]
+                buy_qty = min(2, max_position - pos)
+
+                if buy_qty > 0:
+                    orders.append(Order(p, best_ask, buy_qty))
+                    positions[p] += buy_qty
+
+        adjustment = (target_total - total_price) / len(pebbles)
+        for p in pebbles:
+            depth = depths[p]
+            best_bid = max(depth.buy_orders.keys())
+            best_ask = min(depth.sell_orders.keys())
+            fair_price = mids[p] + adjustment
+            pos = positions[p]
+            edge_buy = fair_price - best_ask
+            edge_sell = best_bid - fair_price
+            local_threshold = 2
+
+            if edge_buy > local_threshold and pos < max_position:
+                qty = min(3, max_position - pos)
+                if qty > 0:
+                    orders.append(Order(p, best_ask, qty))
+                    positions[p] += qty
+
+            if edge_sell > local_threshold and pos > -max_position:
+                qty = min(3, max_position + pos)
+                if qty > 0:
+                    orders.append(Order(p, best_bid, -qty))
+                    positions[p] -= qty
 
         return orders
 
@@ -75,7 +189,7 @@ class Trader:
         fair_price = mid + k * imbalance
 
         ## ARBITRAGE ##
-        arb_limit = 10
+        arb_limit = 2
         arb_threshold = spread * 0.45
 
         for price, quantity in sorted(order_depth.sell_orders.items()):
@@ -96,7 +210,7 @@ class Trader:
         if order_depth.buy_orders and order_depth.sell_orders:
             inv = product_position / max_position
             kappa = 0.5
-            base_size = 20
+            base_size = 3
             bid_size = max(0, int(base_size * (1 - inv)))
             ask_size = max(0, int(base_size * (1 + inv)))
 
@@ -116,6 +230,9 @@ class Trader:
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
 
+        for product in state.order_depths:
+            result[product] = []
+
         mean_reverting = [
             "UV_VISOR_ORANGE",
             "ROBOT_VACUUMING",
@@ -126,8 +243,22 @@ class Trader:
         ]
 
         for product in mean_reverting:
-            order_book = self.trade_mean_reverting(state, product)
-            result[product] = order_book
+            if product in state.order_depths:
+                orders = self.trade_mean_reverting(state, product)
+                for o in orders:
+                    result[o.symbol].append(o)
+
+        orders = self.trade_pairs(state, "SNACKPACK_PISTACHIO", "SNACKPACK_STRAWBERRY")
+        for o in orders:
+            if o.symbol not in result:
+                result[o.symbol] = []
+            result[o.symbol].append(o)
+
+        orders = self.trade_pebbles_basket(state)
+        for o in orders:
+            if o.symbol not in result:
+                result[o.symbol] = []
+            result[o.symbol].append(o)
 
         traderData = ""
         conversions = 0
