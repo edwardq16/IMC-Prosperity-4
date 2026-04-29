@@ -4,19 +4,25 @@ import numpy as np
 
 df = pd.read_csv("prices_round_5_day_2.csv", sep=";")
 
-group = df["product"].str.split("_").str[0]
+parts = df["product"].str.split("_")
 
-galaxy = df[group == "GALAXY"]
-sleep = df[group == "SLEEP"]
-microchip = df[group == "MICROCHIP"]
-pebbles = df[group == "PEBBLES"]
-robot = df[group == "ROBOT"]
-uv = df[group == "UV"]
-translator = df[group == "TRANSLATOR"]
-panel = df[group == "PANEL"]
-oxygen = df[group == "OXYGEN"]
-snackpack = df[group == "SNACKPACK"]
+df[["group", "item"]] = df["product"].str.split("_", n=1, expand=True)
 
-plt.plot(galaxy["timestamp"], galaxy["mid_price"], label="GALAXY")
-plt.legend()
+figures = []
+
+for group_name, group_df in df.groupby("group"):
+    fig, ax = plt.subplots()
+
+    for item_name, item_df in group_df.groupby("item"):
+        item_df = item_df.sort_values("timestamp")
+        ax.plot(item_df["timestamp"], item_df["mid_price"], label=item_name)
+
+    ax.set_title(group_name)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Mid Price")
+    ax.legend()
+    fig.autofmt_xdate()
+
+    figures.append(fig)
+
 plt.show()
