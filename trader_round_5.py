@@ -117,11 +117,11 @@ class Trader:
         result = {}
 
         mean_reverting = [
-            "UV_VISOR_ORANGE"
-            "ROBOT_VACUUMING"
-            "ROBOT_DISHES"
-            "PANEL_2X2"
-            "OXYGEN_SHAKE_MINT"
+            "UV_VISOR_ORANGE",
+            "ROBOT_VACUUMING",
+            "ROBOT_DISHES",
+            "PANEL_2X2",
+            "OXYGEN_SHAKE_MINT",
             "MICROCHIP_TRIANGLE"
         ]
 
